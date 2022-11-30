@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 public interface EventRepository extends JpaRepository<Event, Long>, QuerydslPredicateExecutor<Event> {
 
-    boolean existsByCategory_Id(Long category_id);
+    boolean existsByCategory_Id(Long categoryId);
 
     @Modifying
     @Query("update Event e set e.state = :state where e.id = :id")
@@ -26,7 +26,7 @@ public interface EventRepository extends JpaRepository<Event, Long>, QuerydslPre
 
     boolean existsByIdAndState(Long id, EventStatus state);
 
-    boolean existsByIdAndUser_Id(Long id, Long user_id);
+    boolean existsByIdAndUser_Id(Long id, Long userId);
 
     @Modifying
     @Query("update Event e set e.confirmedRequests = e.confirmedRequests + 1 where e.id = :id")
