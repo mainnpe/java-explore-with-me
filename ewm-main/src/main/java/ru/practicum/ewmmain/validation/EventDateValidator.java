@@ -10,7 +10,7 @@ public class EventDateValidator implements ConstraintValidator<IsAfterConstraint
     @Override
     public void initialize(IsAfterConstraint constraintAnnotation) {
         constraint = constraintAnnotation;
-        //ConstraintValidator.super.initialize(constraintAnnotation);
+
     }
 
     @Override

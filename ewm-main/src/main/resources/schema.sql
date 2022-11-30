@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users
     name  VARCHAR NOT NULL,
     email VARCHAR NOT NULL UNIQUE,
     CONSTRAINT inv_user_email CHECK (email <> '' AND POSITION('@' IN email) > 0),
-    CONSTRAINT inv_user_name CHECK (name <> '' AND POSITION(' ' IN name) = 0)
+    CONSTRAINT inv_user_name CHECK (name <> '')
 );
 
 CREATE TABLE IF NOT EXISTS categories
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS compilations
 CREATE TABLE IF NOT EXISTS events
 (
     id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    category_id        BIGINT REFERENCES categories ON DELETE CASCADE,
+    category_id        BIGINT REFERENCES categories,
     user_id            BIGINT REFERENCES users ON DELETE CASCADE,
     title              VARCHAR(120)  NOT NULL,
     annotation         VARCHAR(2000) NOT NULL,
@@ -37,15 +37,16 @@ CREATE TABLE IF NOT EXISTS events
     published          TIMESTAMP,
     state              VARCHAR       NOT NULL DEFAULT 'PENDING',
     paid               BOOLEAN                DEFAULT FALSE,
-    participant_limit  INT                    default 0,
+    participant_limit  INT                    DEFAULT 0,
     request_moderation BOOLEAN                DEFAULT TRUE,
-    confirmed_requests INT,
+    confirmed_requests INT                    DEFAULT 0,
     latitude           double precision,
     longitude          double precision,
 
     CONSTRAINT inv_event_title CHECK (title <> ''),
     CONSTRAINT inv_event_descr CHECK (description <> ''),
-    CONSTRAINT inv_event_annotation CHECK (annotation <> '')
+    CONSTRAINT inv_event_annotation CHECK (annotation <> ''),
+    CONSTRAINT events_confirmed_req_goe_than_0 CHECK (confirmed_requests >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS compilation_events
@@ -61,5 +62,6 @@ CREATE TABLE IF NOT EXISTS requests
     requester_id BIGINT REFERENCES users ON DELETE CASCADE,
     event_id     BIGINT REFERENCES events ON DELETE CASCADE,
     status       VARCHAR NOT NULL DEFAULT 'PENDING',
-    created      TIMESTAMP
+    created      TIMESTAMP,
+    CONSTRAINT uq_requester_event UNIQUE (requester_id, event_id)
 );

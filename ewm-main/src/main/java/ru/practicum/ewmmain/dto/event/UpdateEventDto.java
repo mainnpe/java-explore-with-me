@@ -1,6 +1,7 @@
 package ru.practicum.ewmmain.dto.event;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 import ru.practicum.ewmmain.validation.IsAfterConstraint;
@@ -10,7 +11,12 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-public class NewEventDto {
+public class UpdateEventDto {
+
+    @NotNull(message = "EventId cannot be null")
+    @Min(value = 1, message = "EventId cannot be less than 1")
+    @JsonProperty("eventId")
+    private Long id;
 
     @NotBlank(message = "Annotation cannot be blank")
     @Size(min = 20, max = 2000, message = "Annotation length must be between 20 and 2000")
@@ -18,8 +24,6 @@ public class NewEventDto {
 
     @Min(value = 1)
     private Long category;
-
-    private Long userId;
 
     @NotBlank(message = "Description cannot be blank")
     @Size(min = 20, max = 7000, message = "Description length must be between 20 and 7000")
@@ -31,13 +35,9 @@ public class NewEventDto {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
 
-    private EventLocationDto location;
-
     private Boolean paid;
 
     private Integer participantLimit;
-
-    private Boolean requestModeration;
 
     @NotBlank(message = "Title cannot be blank")
     @Size(min = 3, max = 120, message = "Title length must be between 3 and 120")

@@ -35,27 +35,27 @@ public class Event {
     private String description;
 
     @Column(name = "event_date")
-    private LocalDateTime eventDate; //event_date
+    private LocalDateTime eventDate;
 
     @Column(name = "created")
     @CreationTimestamp
-    private LocalDateTime createdOn; //created
+    private LocalDateTime createdOn;
 
     @Column(name = "published")
-    private LocalDateTime publishedOn; //published
+    private LocalDateTime publishedOn;
 
     @Enumerated(value = EnumType.STRING)
     private EventStatus state;
     private Boolean paid;
 
     @Column(name = "participant_limit")
-    private Integer participantLimit;  // participant_limit INT default 0,
+    private Integer participantLimit;
 
     @Column(name = "request_moderation")
-    private Boolean requestModeration;  //request_moderation BOOLEAN DEFAULT TRUE,
+    private Boolean requestModeration;
 
     @Column(name = "confirmed_requests")
-    private Integer confirmedRequests;  //confirmed_requests INT,
+    private Integer confirmedRequests;
 
     @Embedded
     private EventLocation location;

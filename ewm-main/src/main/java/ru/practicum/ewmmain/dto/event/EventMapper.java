@@ -2,14 +2,21 @@ package ru.practicum.ewmmain.dto.event;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ReflectionUtils;
 import ru.practicum.ewmmain.dto.category.CategoryMapper;
 import ru.practicum.ewmmain.dto.user.UserMapper;
 import ru.practicum.ewmmain.model.Category;
 import ru.practicum.ewmmain.model.User;
 import ru.practicum.ewmmain.model.event.Event;
 import ru.practicum.ewmmain.model.event.EventLocation;
+import ru.practicum.ewmmain.model.event.EventStatus;
+import ru.practicum.ewmmain.storage.CategoryRepository;
+import ru.practicum.ewmmain.storage.UserRepository;
 
+import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -17,31 +24,24 @@ import java.util.stream.Collectors;
 public class EventMapper {
     private final CategoryMapper categoryMapper;
     private final UserMapper userMapper;
-
-    //categoryRepository
-    //userRepository
+    private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
     //stat service result
 
     public Event toEvent(NewEventDto dto) {
-        //todo
-        //get category from db
-        Category category = new Category();
-        category.setId(dto.getCategory());
-        //todo
-        //get user from db
-        User user = new User();
-        user.setId(dto.getUserId());
+        Optional<Category> category = categoryRepository.findById(dto.getCategory());
+        Optional<User> user = userRepository.findById(dto.getUserId());
 
         Event.EventBuilder eventBuilder = Event.builder()
                 .annotation(dto.getAnnotation())
-                //todo
-                .category(category)
+                .category(category.orElse(null))
                 .description(dto.getDescription())
                 .eventDate(dto.getEventDate())
                 .location(toEventLocation(dto.getLocation()))
                 .title(dto.getTitle())
-                //todo
-                .user(user);
+                .user(user.orElse(null))
+                .state(EventStatus.PENDING)
+                .confirmedRequests(0);
 
         if (dto.getPaid() != null) {
             eventBuilder.paid(dto.getPaid());
@@ -49,6 +49,8 @@ public class EventMapper {
 
         if (dto.getParticipantLimit() != null) {
             eventBuilder.participantLimit(dto.getParticipantLimit());
+        } else {
+            eventBuilder.participantLimit(0);
         }
 
         if (dto.getRequestModeration() != null) {
@@ -57,6 +59,7 @@ public class EventMapper {
 
         return eventBuilder.build();
     }
+
 
     public EventShortDto toEventShortDto(Event event) {
         //todo
@@ -105,12 +108,39 @@ public class EventMapper {
         );
     }
 
+    public List<EventFullDto> toEventFullDtos(List<Event> events) {
+        return events.stream()
+                .map(this::toEventFullDto)
+                .collect(Collectors.toList());
+    }
+
     public EventLocation toEventLocation(EventLocationDto dto) {
         return new EventLocation(dto.getLat(), dto.getLon());
     }
 
     public EventLocationDto toEventLocationDto(EventLocation location) {
         return new EventLocationDto(location.getLatitude(), location.getLongitude());
+    }
+
+    public <T> Event updateEvent(T updateDto, Event event, Category category) {
+        Field[] fields = updateDto.getClass().getDeclaredFields();
+        Arrays.stream(fields).forEach(field -> {
+            Field fieldToUpdate = ReflectionUtils.findField(Event.class,
+                    field.getName());
+            try {
+                field.setAccessible(true);
+                Object value = (!field.getName().equals("category")) ?
+                        field.get(updateDto) : category;
+                if (fieldToUpdate != null && value != null) {
+                    fieldToUpdate.setAccessible(true);
+                    ReflectionUtils.setField(fieldToUpdate, event, value);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(String.format("Access error for Field %s during " +
+                        "entity update", field), e);
+            }
+        });
+        return event;
     }
 
 }
