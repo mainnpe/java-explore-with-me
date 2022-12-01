@@ -106,59 +106,14 @@ public class ErrorHandler {
         );
     }
 
-    /*@ExceptionHandler
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiError handleAlreadyExists(EntityAlreadyExistsException e) {
-        return new ApiError(
-//                List.of(Arrays.toString(e.getStackTrace())),
-                new ArrayList<>(),
-                e.getMessage(),
-                "Integrity constraint has been violated",
-                "CONFLICT",
-                LocalDateTime.now()
-        );
-    }*/
 
 
 
-    /*@ExceptionHandler
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleConversionFailedException(ConversionFailedException e) {
-        return Map.of("error", String.format("Unknown state: %s", e.getValue()));
-    }*/
-
-    /*@ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Map<String, String> handleValidationExceptions(
-            MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-        return errors;
-    }*/
-
-    /*
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleNotFound(NotFoundException e) {
-        return Map.of("error", e.getMessage());
-    }
 
 
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleValidationException(ValidationException e) {
-        return Map.of("error", e.getMessage());
-    }
 
 
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleConversionFailedException(ConversionFailedException e) {
-        return Map.of("error", String.format("Unknown state: %s", e.getValue()));
-    }*/
+
+
 
 }

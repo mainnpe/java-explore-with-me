@@ -6,10 +6,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.server.ResponseStatusException;
+import ru.practicum.ewmmain.client.StatsServiceClient;
 import ru.practicum.ewmmain.dto.event.*;
+import ru.practicum.ewmmain.dto.stats.EndpointHit;
+import ru.practicum.ewmmain.dto.stats.ViewStatsDto;
 import ru.practicum.ewmmain.exception.EntityNotFoundException;
 import ru.practicum.ewmmain.exception.ForbiddenOperationException;
 import ru.practicum.ewmmain.model.Category;
@@ -35,6 +39,9 @@ public class EventServiceImpl implements EventService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final EventMapper eventMapper;
+    private final StatsServiceClient statsServiceClient;
+
+    public static final String APP_NAME = "ewm-main-service";
 
     @Override
     public EventFullDto create(NewEventDto newEventDto) {
@@ -143,14 +150,16 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventFullDto find(Long eventId) {
+    public EventFullDto find(Long eventId, String ip, String uri) {
         Optional<Event> eventOpt = eventRepository.findById(eventId);
         if (eventOpt.isEmpty() ||
                 !Objects.equals(eventOpt.get().getState(), EventStatus.PUBLISHED)) {
             log.warn("Event with id = {} does not exists or not published", eventId);
             throw new EntityNotFoundException("Event not found");
         }
-        return eventMapper.toEventFullDto(eventOpt.get());
+        saveEndpointHit(ip, uri);
+        List<ViewStatsDto> views = getStats(uri);
+        return eventMapper.toEventFullDto(eventOpt.get(), views);
     }
 
     @Override
@@ -224,9 +233,9 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventShortDto> findAll(Optional<String> text, List<Long> categories, boolean paid, boolean onlyAvailable,
+    public List<EventShortDto> findAll(Optional<String> text, List<Long> categories, Optional<Boolean> paid, boolean onlyAvailable,
                                        Optional<LocalDateTime> rangeStart, Optional<LocalDateTime> rangeEnd,
-                                       EventSortState sort, int from, int size) {
+                                       EventSortState sort, int from, int size, String ip, String uri) {
 
         Pageable page = (EventSortState.EVENT_DATE.equals(sort)) ?
                 CustomPageRequest.of(from, size, Sort.by(Sort.Direction.DESC, "eventDate")) :
@@ -239,7 +248,9 @@ public class EventServiceImpl implements EventService {
                         "rangeStart = {}, rangeEnd = {}, sort = {}, from = {}, size = {}: " +
                         "{} events has been founded", text, categories, paid, onlyAvailable,
                 rangeStart, rangeEnd, sort, from, size, events.size());
-        return eventMapper.toEventShortDtos(events);
+        saveEndpointHit(ip, uri);
+        List<ViewStatsDto> views = getStats();
+        return eventMapper.toEventShortDtos(events, views);
     }
 
     @Override
@@ -259,21 +270,27 @@ public class EventServiceImpl implements EventService {
     }
 
     public BooleanExpression preparePredicateForFindAllPublic(Optional<String> text, List<Long> categories,
-                                                              boolean paid, boolean onlyAvailable,
+                                                              Optional<Boolean> paid, boolean onlyAvailable,
                                                               Optional<LocalDateTime> rangeStart,
                                                               Optional<LocalDateTime> rangeEnd) {
         QEvent event = QEvent.event;
         LocalDateTime now = LocalDateTime.now();
 
         BooleanExpression onlyPublished = event.state.eq(EventStatus.PUBLISHED);
-        BooleanExpression inCategories = event.category.id.in(categories);
-        BooleanExpression byPaid = event.paid.eq(paid);
+
+
         BooleanExpression byAvailability = event.confirmedRequests.lt(event.participantLimit);
 
-        BooleanExpression resultPredicate = onlyPublished.and(byPaid);
+        BooleanExpression resultPredicate = onlyPublished;
+
 
         if (!CollectionUtils.isEmpty(categories)) {
+            BooleanExpression inCategories = event.category.id.in(categories);
             resultPredicate.and(inCategories);
+        }
+
+        if (paid.isPresent()) {
+            resultPredicate.and(event.paid.eq(paid.get()));
         }
 
         if (rangeStart.isEmpty() && rangeEnd.isEmpty()) {
@@ -330,5 +347,32 @@ public class EventServiceImpl implements EventService {
                 byEventDate : resultPredicate.and(byEventDate);
 
         return resultPredicate;
+    }
+
+    @Override
+    public void saveEndpointHit(String ip, String uri) {
+        ResponseEntity<Object> response = statsServiceClient.saveHit(
+                new EndpointHit(APP_NAME, uri, ip, LocalDateTime.now()));
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error during saving stats");
+        }
+    }
+
+    @Override
+    public List<ViewStatsDto> getStats(String uri) {
+        List<ViewStatsDto> dtos = statsServiceClient.getStats(uri);
+        if (uri == null) {
+            log.info("Amount of founded results: {}", dtos.size());
+        } else {
+            log.info("For uri - {} amount of views: {}", uri, dtos.size());
+        }
+        return dtos;
+    }
+
+    @Override
+    public List<ViewStatsDto> getStats() {
+        return getStats(null);
     }
 }

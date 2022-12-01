@@ -1,6 +1,7 @@
 package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,7 @@ import ru.practicum.ewmmain.service.CategoryService;
 import ru.practicum.ewmmain.service.CompilationService;
 import ru.practicum.ewmmain.service.EventService;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -24,6 +26,7 @@ import java.util.Optional;
 
 @RestController
 @Validated
+@Slf4j
 @RequiredArgsConstructor
 public class PublicController {
     private final CategoryService categoryService;
@@ -41,16 +44,17 @@ public class PublicController {
         return categoryService.findById(catId);
     }
 
-    @GetMapping("events/{id}")
-    public EventFullDto getEvent(@PathVariable @Min(1) @NotNull Long id) {
-        //todo add HttpRequest to Stats service
-        return eventService.find(id);
+    @GetMapping("/events/{id}")
+    public EventFullDto getEvent(@PathVariable @Min(1) @NotNull Long id, HttpServletRequest request) {
+
+        return eventService.find(id, request.getRemoteAddr(), request.getRequestURI());
     }
 
     @GetMapping("/events")
     public List<EventShortDto> getEvents(@RequestParam Optional<String> text,
                                          @RequestParam(required = false) List<Long> categories,
-                                         @RequestParam @NotNull Boolean paid,
+
+                                         @RequestParam Optional<Boolean> paid,
                                          @RequestParam(defaultValue = "false") @NotNull Boolean onlyAvailable,
                                          @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
                                          Optional<LocalDateTime> rangeStart,
@@ -58,9 +62,11 @@ public class PublicController {
                                          Optional<LocalDateTime> rangeEnd,
                                          @RequestParam(defaultValue = "EVENT_DATE") EventSortState sort,
                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
-                                         @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
-        return eventService.findAll(text, categories, paid, onlyAvailable,
-                rangeStart, rangeEnd, sort, from, size);
+                                         @RequestParam(defaultValue = "10") @Min(1) @NotNull int size,
+                                         HttpServletRequest request) {
+        log.warn("!!!!!!! uri = {}, ip = {}", request.getRequestURI(), request.getRemoteAddr());
+        return eventService.findAll(text, categories, paid, onlyAvailable, rangeStart, rangeEnd,
+                sort, from, size, request.getRemoteAddr(), request.getRequestURI());
     }
 
 

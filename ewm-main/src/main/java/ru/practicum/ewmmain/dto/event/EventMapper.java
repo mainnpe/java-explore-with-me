@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 import ru.practicum.ewmmain.dto.category.CategoryMapper;
+import ru.practicum.ewmmain.dto.stats.ViewStatsDto;
 import ru.practicum.ewmmain.dto.user.UserMapper;
 import ru.practicum.ewmmain.model.Category;
 import ru.practicum.ewmmain.model.User;
@@ -26,7 +27,7 @@ public class EventMapper {
     private final UserMapper userMapper;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
-    //stat service result
+
 
     public Event toEvent(NewEventDto dto) {
         Optional<Category> category = categoryRepository.findById(dto.getCategory());
@@ -62,8 +63,8 @@ public class EventMapper {
 
 
     public EventShortDto toEventShortDto(Event event) {
-        //todo
-        //get views from stat service
+
+
         Long views = 0L;
         return new EventShortDto(
                 event.getId(),
@@ -78,15 +79,28 @@ public class EventMapper {
         );
     }
 
+    public EventShortDto toEventShortDto(Event event, List<ViewStatsDto> views) {
+        EventShortDto dto = toEventShortDto(event);
+        Long hits = getViews(views, event.getId());
+        dto.setViews(hits);
+        return dto;
+    }
+
     public List<EventShortDto> toEventShortDtos(List<Event> events) {
         return events.stream()
                 .map(this::toEventShortDto)
                 .collect(Collectors.toList());
     }
 
+    public List<EventShortDto> toEventShortDtos(List<Event> events, final List<ViewStatsDto> views) {
+        return events.stream()
+                .map(x -> toEventShortDto(x, views))
+                .collect(Collectors.toList());
+    }
+
     public EventFullDto toEventFullDto(Event event) {
-        //todo
-        //get views from stat service
+
+
         Long views = 0L;
         return new EventFullDto(
                 event.getId(),
@@ -106,6 +120,27 @@ public class EventMapper {
                 event.getTitle(),
                 views
         );
+    }
+
+    public EventFullDto toEventFullDto(Event event, List<ViewStatsDto> views) {
+        EventFullDto dto = toEventFullDto(event);
+        Long hits = getViews(views, event.getId());
+        dto.setViews(hits);
+        return dto;
+    }
+
+    private Long getViews(List<ViewStatsDto> views, Long id) {
+        String uri = String.format("/events/%s", id);
+        Long hits = 0L;
+        Optional<ViewStatsDto> statsOpt = views.stream()
+                .filter(x -> x.getUri().equals(uri))
+                .findAny();
+
+        if (statsOpt.isPresent()) {
+            hits = statsOpt.get().getHits();
+        }
+
+        return hits;
     }
 
     public List<EventFullDto> toEventFullDtos(List<Event> events) {
