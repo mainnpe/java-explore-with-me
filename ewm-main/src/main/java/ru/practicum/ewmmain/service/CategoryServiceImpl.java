@@ -36,10 +36,11 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryDto update(CategoryDto dto) {
-        if (categoryRepository.findById(dto.getId()).isEmpty()) {
+        if (!categoryRepository.existsById(dto.getId())) {
             log.warn("Category with id '{}' not found", dto.getId());
             throw new EntityNotFoundException("Unable to find category for update");
         }
+
         if (categoryRepository.existsByName(dto.getName())) {
             log.warn("Category with name '{}' already exists", dto.getName());
         }
@@ -70,12 +71,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryDto findById(long id) {
-        if (!categoryRepository.existsById(id)) {
+
+        Category category = categoryRepository.findById(id).orElseThrow(() -> {
             log.warn("Category with id = {} does not exist", id);
             throw new EntityNotFoundException("Category not found");
-        }
-        return categoryMapper.toCategoryDto(
-                categoryRepository.findById(id));
+        });
+        return categoryMapper.toCategoryDto(category);
+
     }
 
 }

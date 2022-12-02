@@ -1,6 +1,5 @@
 package ru.practicum.ewmstats.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -21,6 +20,6 @@ public class EndpointHit {
     private String ip;
 
     @NotNull(message = "Timestamp field cannot be null")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
     private LocalDateTime timestamp;
 }

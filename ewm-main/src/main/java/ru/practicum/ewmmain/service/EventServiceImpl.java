@@ -75,14 +75,14 @@ public class EventServiceImpl implements EventService {
         int rows = eventRepository.updateEventStateAndPublishedDate(eventId,
                 EventStatus.PUBLISHED, publishDate);
         log.info("{} event with id = {} was published", rows, eventId);
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
 
-        if (eventOpt.isEmpty()) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Unable to find event with id = {} after update (status -> published)", eventId);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable extract event data after update");
-        }
-        return eventMapper.toEventFullDto(eventOpt.get());
+        });
+
+        return eventMapper.toEventFullDto(event);
     }
 
     @Override
@@ -97,14 +97,13 @@ public class EventServiceImpl implements EventService {
         int rows = eventRepository.updateEventState(eventId,
                 EventStatus.CANCELED);
         log.info("{} event with id = {} was rejected", rows, eventId);
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
 
-        if (eventOpt.isEmpty()) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Unable to find event with id = {} after update (status -> canceled)", eventId);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable extract event data after update");
-        }
-        return eventMapper.toEventFullDto(eventOpt.get());
+        });
+        return eventMapper.toEventFullDto(event);
     }
 
     @Override
@@ -123,14 +122,13 @@ public class EventServiceImpl implements EventService {
         int rows = eventRepository.updateEventState(eventId,
                 EventStatus.CANCELED);
         log.info("{} event with id = {} was canceled", rows, eventId);
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
 
-        if (eventOpt.isEmpty()) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Unable to find event with id = {} after update (status -> canceled)", eventId);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable extract event data after update");
-        }
-        return eventMapper.toEventFullDto(eventOpt.get());
+        });
+        return eventMapper.toEventFullDto(event);
     }
 
     @Override
@@ -140,26 +138,29 @@ public class EventServiceImpl implements EventService {
             throw new EntityNotFoundException("Requested event created buy " +
                     "current user does not exists");
         }
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        if (eventOpt.isEmpty()) {
+
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Unable to find event with id = {} during get request", eventId);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable to find event");
-        }
-        return eventMapper.toEventFullDto(eventOpt.get());
+        });
+        return eventMapper.toEventFullDto(event);
     }
 
     @Override
     public EventFullDto find(Long eventId, String ip, String uri) {
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        if (eventOpt.isEmpty() ||
-                !Objects.equals(eventOpt.get().getState(), EventStatus.PUBLISHED)) {
-            log.warn("Event with id = {} does not exists or not published", eventId);
+
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
+            log.warn("Event with id = {} does not exist", eventId);
+            throw new EntityNotFoundException("Event not found");
+        });
+        if (!Objects.equals(event.getState(), EventStatus.PUBLISHED)) {
+            log.warn("Event with id = {} not published", eventId);
             throw new EntityNotFoundException("Event not found");
         }
         saveEndpointHit(ip, uri);
         List<ViewStatsDto> views = getStats(uri);
-        return eventMapper.toEventFullDto(eventOpt.get(), views);
+        return eventMapper.toEventFullDto(event, views);
     }
 
     @Override
@@ -175,39 +176,37 @@ public class EventServiceImpl implements EventService {
         return eventMapper.toEventShortDtos(events);
     }
 
+
     @Override
     public EventFullDto modify(AdminUpdateEventDto updateEventDto) {
         Long eventId = updateEventDto.getId();
-        Optional<Category> categoryOpt = categoryRepository.findById(
-                updateEventDto.getCategory());
-        if (categoryOpt.isEmpty()) {
-            log.warn("Category with id = {} does not exists", updateEventDto.getCategory());
-            throw new EntityNotFoundException("Category does not exists");
-        }
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        if (eventOpt.isEmpty()) {
+        Category category = categoryRepository.findById(updateEventDto.getCategory())
+                .orElseThrow(() -> {
+                    log.warn("Category with id = {} does not exists", updateEventDto.getCategory());
+                    throw new EntityNotFoundException("Category does not exists");
+                });
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Event with id = {} does not exists", eventId);
             throw new EntityNotFoundException("Event does not exists");
-        }
+        });
 
-        Event event = eventRepository.save(eventMapper.updateEvent(
-                updateEventDto, eventOpt.get(), categoryOpt.get()));
+        Event updatedEvent = eventRepository.save(eventMapper.updateEvent(
+                updateEventDto, event, category));
         log.info("Event with id = {} has been updated", eventId);
 
-        return eventMapper.toEventFullDto(event);
+        return eventMapper.toEventFullDto(updatedEvent);
     }
 
     @Override
     public EventFullDto modify(UpdateEventDto updateEventDto, Long userId) {
         Long eventId = updateEventDto.getId();
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
 
-        if (eventOpt.isEmpty()) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Event with id = {} does not exists", eventId);
             throw new EntityNotFoundException("Event does not exists");
-        }
+        });
 
-        if (!eventOpt.get().getUser().getId().equals(userId)) {
+        if (!event.getUser().getId().equals(userId)) {
             log.warn("Unable to modify. User can modify only his events");
             throw new ForbiddenOperationException("User can modify only his events");
         }
@@ -218,18 +217,17 @@ public class EventServiceImpl implements EventService {
             throw new ForbiddenOperationException("Published events cannot be modified");
         }
 
-        Optional<Category> categoryOpt = categoryRepository.findById(
-                updateEventDto.getCategory());
-        if (categoryOpt.isEmpty()) {
-            log.warn("Category with id = {} does not exists", updateEventDto.getCategory());
-            throw new EntityNotFoundException("Category does not exists");
-        }
+        Category category = categoryRepository.findById(updateEventDto.getCategory())
+                .orElseThrow(() -> {
+                    log.warn("Category with id = {} does not exists", updateEventDto.getCategory());
+                    throw new EntityNotFoundException("Category does not exists");
+                });
 
-        Event event = eventRepository.save(eventMapper.updateEvent(
-                updateEventDto, eventOpt.get(), categoryOpt.get()));
+        Event updatedEvent = eventRepository.save(eventMapper.updateEvent(
+                updateEventDto, event, category));
         log.info("Event with id = {} has been updated", eventId);
 
-        return eventMapper.toEventFullDto(event);
+        return eventMapper.toEventFullDto(updatedEvent);
     }
 
     @Override
@@ -275,13 +273,10 @@ public class EventServiceImpl implements EventService {
                                                               Optional<LocalDateTime> rangeEnd) {
         QEvent event = QEvent.event;
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startDate = rangeStart.orElse(now);
+        LocalDateTime endDate = rangeEnd.orElse(null);
 
-        BooleanExpression onlyPublished = event.state.eq(EventStatus.PUBLISHED);
-
-
-        BooleanExpression byAvailability = event.confirmedRequests.lt(event.participantLimit);
-
-        BooleanExpression resultPredicate = onlyPublished;
+        BooleanExpression resultPredicate = event.state.eq(EventStatus.PUBLISHED);
 
 
         if (!CollectionUtils.isEmpty(categories)) {
@@ -289,25 +284,25 @@ public class EventServiceImpl implements EventService {
             resultPredicate.and(inCategories);
         }
 
-        if (paid.isPresent()) {
-            resultPredicate.and(event.paid.eq(paid.get()));
-        }
 
-        if (rangeStart.isEmpty() && rangeEnd.isEmpty()) {
+        if (endDate == null) {
             resultPredicate.and(event.eventDate.after(now));
         } else {
             resultPredicate.and(event.eventDate
-                    .between(rangeStart.get(), rangeEnd.get()));
+                    .between(startDate, endDate));
         }
 
         if (onlyAvailable) {
+            BooleanExpression byAvailability = event.confirmedRequests.lt(event.participantLimit);
             resultPredicate.and(byAvailability);
         }
 
-        if (text.isPresent()) {
-            resultPredicate.and(event.annotation.likeIgnoreCase(text.get())
-                    .or(event.description.likeIgnoreCase(text.get())));
-        }
+        paid.ifPresent(aBoolean -> resultPredicate.and(event.paid.eq(aBoolean)));
+
+
+        text.ifPresent(s -> resultPredicate.and(event.annotation.likeIgnoreCase(s)
+                .or(event.description.likeIgnoreCase(s))));
+
         return resultPredicate;
     }
 
@@ -318,6 +313,8 @@ public class EventServiceImpl implements EventService {
                                                              Optional<LocalDateTime> rangeEnd) {
         QEvent event = QEvent.event;
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startDate = rangeStart.orElse(now);
+        LocalDateTime endDate = rangeEnd.orElse(null);
         BooleanExpression resultPredicate = null;
         BooleanExpression byEventDate;
 
@@ -337,11 +334,12 @@ public class EventServiceImpl implements EventService {
                     inStates : resultPredicate.and(inStates);
         }
 
-        if (rangeStart.isEmpty() && rangeEnd.isEmpty()) {
+
+        if (endDate == null) {
             byEventDate = event.eventDate.after(now);
         } else {
             byEventDate = event.eventDate
-                    .between(rangeStart.get(), rangeEnd.get());
+                    .between(startDate, endDate);
         }
         resultPredicate = (resultPredicate == null) ?
                 byEventDate : resultPredicate.and(byEventDate);

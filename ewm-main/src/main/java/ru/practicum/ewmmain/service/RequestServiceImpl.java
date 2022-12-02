@@ -23,7 +23,6 @@ import javax.persistence.PersistenceContext;
 import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -38,20 +37,21 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public ParticipationRequestDto create(long userId, long eventId) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        if (userOpt.isEmpty() || eventOpt.isEmpty()) {
-            log.warn("User with id = {} or event with id = {} does not exists", userId, eventId);
-            throw new EntityNotFoundException("User or event does not exists");
-        }
+        User user = userRepository.findById(userId).orElseThrow(() -> {
+            log.warn("User with id = {} does not exist", userId);
+            throw new EntityNotFoundException("User does not exist");
+        });
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
+            log.warn("Event with id = {} does not exist", userId);
+            throw new EntityNotFoundException("Event does not exist");
+        });
+
         if (eventRepository.existsByIdAndUser_Id(eventId, userId)) {
             log.warn("Unable to add request to event {} by user {}. " +
                             "Users can add requests only for other's user events",
                     eventId, userId);
             throw new ForbiddenOperationException("Users can add requests only for other's user events");
         }
-        Event event = eventOpt.get();
-
         if (!EventStatus.PUBLISHED.equals(event.getState())) {
             log.warn("Event {} is not published. User cannot participate in events " +
                     "that not published yet", eventId);
@@ -69,9 +69,10 @@ public class RequestServiceImpl implements RequestService {
                 RequestStatus.PENDING : RequestStatus.CONFIRMED;
 
         return requestMapper.toRequestDto(
-                requestRepository.save(new Request(userOpt.get(), event, requestStatus))
+                requestRepository.save(new Request(user, event, requestStatus))
         );
     }
+
 
     @Override
     public List<ParticipationRequestDto> findAll(long userId) {
@@ -99,11 +100,10 @@ public class RequestServiceImpl implements RequestService {
     @Override
     @Transactional
     public ParticipationRequestDto cancel(long userId, long requestId) {
-        Optional<Request> requestOpt = requestRepository.findById(requestId);
-        if (requestOpt.isEmpty()) {
-            log.warn("Request with id = {} does not exists", requestId);
+        Request request = requestRepository.findById(requestId).orElseThrow(() -> {
+            log.warn("Request with id = {} does not exist", requestId);
             throw new EntityNotFoundException("Request does not exist");
-        }
+        });
 
         if (!requestRepository.existsByIdAndRequester_Id(requestId, userId)) {
             log.warn("Unable to cancel request {}. User {} can cancel only its requests",
@@ -111,21 +111,20 @@ public class RequestServiceImpl implements RequestService {
             throw new ForbiddenOperationException("User can cancel only its requests");
         }
 
-        updateRequestStatusAndNConfirmed(requestId, requestOpt.get().getEvent().getId(),
+        updateRequestStatusAndNConfirmed(requestId, request.getEvent().getId(),
                 RequestStatus.CANCELED);
 
-        Optional<Request> updatedRequestOpt = requestRepository.findById(requestId);
+        Request updatedRequest = requestRepository.findById(requestId)
+                .orElseThrow(() -> {
+                    log.warn("Unable to find request with id = {} after update (status -> canceled)", requestId);
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Error during update of request status to cancel");
+                });
 
-        if (updatedRequestOpt.isEmpty()) {
-            log.warn("Unable to find request with id = {} after update (status -> canceled)", requestId);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error during update of request status to cancel");
-        }
-
-        em.refresh(updatedRequestOpt.get());
-
-        return requestMapper.toRequestDto(updatedRequestOpt.get());
+        em.refresh(updatedRequest);
+        return requestMapper.toRequestDto(updatedRequest);
     }
+
 
     @Override
     @Transactional
@@ -133,28 +132,29 @@ public class RequestServiceImpl implements RequestService {
         checkConditionsForConfirmRequest(userId, eventId, requestId);
         updateRequestStatusAndNConfirmed(requestId, eventId, RequestStatus.CONFIRMED);
 
-        Optional<Request> requestOpt = requestRepository.findById(requestId);
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> {
+                    log.warn("Unable to find request {} after update (status -> confirmed)",
+                            requestId);
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Error during update of request status to confirmed");
+                });
 
-        if (requestOpt.isEmpty()) {
-            log.warn("Unable to find request {} after update (status -> confirmed)",
-                    requestId);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error during update of request status to confirmed");
-        }
-        em.refresh(requestOpt.get());
-        return requestMapper.toRequestDto(requestOpt.get());
+        em.refresh(request);
+        return requestMapper.toRequestDto(request);
     }
 
     @Override
     @Transactional
     public ParticipationRequestDto reject(long userId, long eventId, long requestId) {
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
+            log.warn("Unable to reject request {}. Event {} does not exist", requestId, eventId);
+            throw new ForbiddenOperationException("Unable to reject. Event does not exist");
+        });
 
-        if (eventOpt.isEmpty() || !eventOpt.get().getUser().getId().equals(userId)) {
-            log.warn("Unable to cancel request {}. Event {} does not exist or user {} did not create this event",
-                    requestId, eventId, userId);
-            throw new ForbiddenOperationException("Unable to cancel. Event does not exist or " +
-                    "user did not create this event");
+        if (!event.getUser().getId().equals(userId)) {
+            log.warn("Unable to reject request {}. User {} did not create this event", requestId, userId);
+            throw new ForbiddenOperationException("Unable to reject. User did not create this event");
         }
         if (!requestRepository.existsById(requestId)) {
             log.warn("Request with id = {} does not exist", requestId);
@@ -163,33 +163,36 @@ public class RequestServiceImpl implements RequestService {
 
         updateRequestStatusAndNConfirmed(requestId, eventId, RequestStatus.REJECTED);
 
-        Optional<Request> requestOpt = requestRepository.findById(requestId);
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> {
+                    log.warn("Unable to find request {} after update (status -> rejected)",
+                            requestId);
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Error during update of request status to rejected");
+                });
 
-        if (requestOpt.isEmpty()) {
-            log.warn("Unable to find request {} after update (status -> canceled)",
-                    requestId);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error during update of request status to canceled");
-        }
-        em.refresh(requestOpt.get());
-        return requestMapper.toRequestDto(requestOpt.get());
+        em.refresh(request);
+        return requestMapper.toRequestDto(request);
     }
 
-    private void checkConditionsForConfirmRequest(long userId, long eventId, long requestId) {
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
 
-        if (eventOpt.isEmpty() || !eventOpt.get().getUser().getId().equals(userId)) {
-            log.warn("Unable to confirm request {}. Event {} does not exist or user {} did not create this event",
-                    requestId, eventId, userId);
-            throw new ForbiddenOperationException("Unable to confirm. Event does not exist or " +
-                    "user did not create this event");
+    private void checkConditionsForConfirmRequest(long userId, long eventId, long requestId) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
+            log.warn("Unable to confirm request {}. Event {} does not exist",
+                    requestId, eventId);
+            throw new ForbiddenOperationException("Unable to confirm. Event does not exist");
+        });
+
+        if (!event.getUser().getId().equals(userId)) {
+            log.warn("Unable to confirm request {}. User {} did not create this event", requestId, eventId);
+            throw new ForbiddenOperationException("Unable to confirm. User did not create this event");
         }
         if (!requestRepository.existsById(requestId)) {
             log.warn("Request with id = {} does not exist", requestId);
             throw new EntityNotFoundException("Request does not exist");
         }
-        Event event = eventOpt.get();
         Integer participantLimit = event.getParticipantLimit();
+
         if (participantLimit.equals(0) || event.getRequestModeration().equals(false)) {
             log.warn("Unable to approve request {}. Event {} do not require moderation",
                     requestId, eventId);
@@ -206,11 +209,14 @@ public class RequestServiceImpl implements RequestService {
 
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void updateRequestStatusAndNConfirmed(long requestId, long eventId, RequestStatus status) {
-        int requestRows;
-        int eventRows = 0;
-        Request request = requestRepository.findById(requestId).get();
+        Request request = requestRepository.findById(requestId).orElseThrow(() -> {
+            log.warn("Request with id = {} does not exist", requestId);
+            throw new EntityNotFoundException("Request does not exist");
+        });
         em.refresh(request);
         RequestStatus initialStatus = request.getStatus();
+        int requestRows;
+        int eventRows = 0;
 
         switch (status) {
             case CONFIRMED:
@@ -241,11 +247,10 @@ public class RequestServiceImpl implements RequestService {
                 eventId, (RequestStatus.CONFIRMED.equals(status)) ? "increased" : "decreased");
     }
 
+
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void cancelRedundantRequests(long eventId) {
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        if (eventOpt.isPresent()) {
-            Event event = eventOpt.get();
+        eventRepository.findById(eventId).ifPresent(event -> {
             log.trace("For event {} confirmed requests - {}, participant limit - {}",
                     event.getId(), event.getConfirmedRequests(), event.getParticipantLimit());
             if (event.getParticipantLimit().equals(event.getConfirmedRequests())) {
@@ -253,8 +258,7 @@ public class RequestServiceImpl implements RequestService {
                 log.info("{} requests was canceled due to reaching limit of participants {} " +
                         "for event {}", canceledRows, event.getParticipantLimit(), eventId);
             }
-        }
+        });
     }
-
 
 }

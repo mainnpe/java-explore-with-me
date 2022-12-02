@@ -1,7 +1,6 @@
 package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmmain.dto.category.CategoryDto;
@@ -48,7 +47,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/users/{userId}")
-    public void deleteUser(@PathVariable @Min(1) @NotNull Long userId) {
+    public void deleteUser(@PathVariable @NotNull Long userId) {
         userService.delete(userId);
     }
 
@@ -63,7 +62,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/categories/{catId}")
-    public void deleteCategory(@PathVariable @Min(1) @NotNull Long catId) {
+    public void deleteCategory(@PathVariable @NotNull Long catId) {
         categoryService.delete(catId);
     }
 
@@ -75,12 +74,12 @@ public class AdminController {
     }
 
     @PatchMapping("/events/{eventId}/publish")
-    public EventFullDto publishEvent(@PathVariable @NotNull @Min(1) Long eventId) {
+    public EventFullDto publishEvent(@PathVariable @NotNull Long eventId) {
         return eventService.publish(eventId);
     }
 
     @PatchMapping("/events/{eventId}/reject")
-    public EventFullDto rejectEvent(@PathVariable @NotNull @Min(1) Long eventId) {
+    public EventFullDto rejectEvent(@PathVariable @NotNull Long eventId) {
         return eventService.cancel(eventId);
     }
 
@@ -88,10 +87,8 @@ public class AdminController {
     public List<EventFullDto> getEvents(@RequestParam(required = false) List<Long> users,
                                         @RequestParam(required = false) List<EventStatus> states,
                                         @RequestParam(required = false) List<Long> categories,
-                                        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-                                        Optional<LocalDateTime> rangeStart,
-                                        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-                                        Optional<LocalDateTime> rangeEnd,
+                                        @RequestParam Optional<LocalDateTime> rangeStart,
+                                        @RequestParam Optional<LocalDateTime> rangeEnd,
                                         @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
                                         @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
         return eventService.findAll(users, states, categories, rangeStart, rangeEnd, from, size);
@@ -103,29 +100,29 @@ public class AdminController {
     }
 
     @DeleteMapping("/compilations/{compId}")
-    public void deleteCompilation(@PathVariable @NotNull @Min(1) Long compId) {
+    public void deleteCompilation(@PathVariable @NotNull Long compId) {
         compilationService.delete(compId);
     }
 
     @DeleteMapping("/compilations/{compId}/events/{eventId}")
-    public void deleteEventFromCompilation(@PathVariable @NotNull @Min(1) Long compId,
-                                           @PathVariable @NotNull @Min(1) Long eventId) {
+    public void deleteEventFromCompilation(@PathVariable @NotNull Long compId,
+                                           @PathVariable @NotNull Long eventId) {
         compilationService.deleteEvent(compId, eventId);
     }
 
     @PatchMapping("/compilations/{compId}/events/{eventId}")
-    public void addEventToCompilation(@PathVariable @NotNull @Min(1) Long compId,
-                                      @PathVariable @NotNull @Min(1) Long eventId) {
+    public void addEventToCompilation(@PathVariable @NotNull Long compId,
+                                      @PathVariable @NotNull Long eventId) {
         compilationService.addEvent(compId, eventId);
     }
 
     @DeleteMapping("/compilations/{compId}/pin")
-    public void unpinCompilation(@PathVariable @NotNull @Min(1) Long compId) {
+    public void unpinCompilation(@PathVariable @NotNull Long compId) {
         compilationService.unpin(compId);
     }
 
     @PatchMapping("/compilations/{compId}/pin")
-    public void pinCompilation(@PathVariable @NotNull @Min(1) Long compId) {
+    public void pinCompilation(@PathVariable @NotNull Long compId) {
         compilationService.pin(compId);
     }
 

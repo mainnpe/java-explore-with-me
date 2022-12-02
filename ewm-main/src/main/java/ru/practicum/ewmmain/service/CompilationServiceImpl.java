@@ -19,7 +19,6 @@ import ru.practicum.ewmmain.utils.CustomPageRequest;
 
 import javax.transaction.Transactional;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -51,14 +50,15 @@ public class CompilationServiceImpl implements CompilationService {
         log.info("Compilation {} has been deleted", id);
     }
 
+
     @Override
     public void deleteEvent(long compId, long eventId) {
-        Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
-        if (compilationOpt.isEmpty()) {
-            log.warn("Compilation with id = {} does not exists", compId);
-            throw new EntityNotFoundException("Compilation does not exists");
-        }
-        Set<Event> events = compilationOpt.get().getEvents();
+        Compilation compilation = compilationRepository.findById(compId)
+                .orElseThrow(() -> {
+                    log.warn("Compilation with id = {} does not exists", compId);
+                    throw new EntityNotFoundException("Compilation does not exists");
+                });
+        Set<Event> events = compilation.getEvents();
         events.stream()
                 .map(Event::getId)
                 .filter(x -> x.equals(eventId))
@@ -69,27 +69,25 @@ public class CompilationServiceImpl implements CompilationService {
                 });
         Event eventToDelete = Event.builder().id(eventId).build();
         events.remove(eventToDelete);
-        compilationRepository.save(compilationOpt.get());
+        compilationRepository.save(compilation);
         log.info("Event {} has been removed from compilation {}", eventId, compId);
     }
 
 
+
     @Override
     public void addEvent(long compId, long eventId) {
-        Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        if (compilationOpt.isEmpty()) {
-            log.warn("Compilation with id = {} does not exists", compId);
-            throw new EntityNotFoundException("Compilation does not exists");
-        }
-
-        if (eventOpt.isEmpty()) {
+        Compilation compilation = compilationRepository.findById(compId)
+                .orElseThrow(() -> {
+                    log.warn("Compilation with id = {} does not exists", compId);
+                    throw new EntityNotFoundException("Compilation does not exists");
+                });
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Event with id = {} does not exists", eventId);
             throw new EntityNotFoundException("Event does not exists");
-        }
-
-        compilationOpt.get().getEvents().add(eventOpt.get());
-        compilationRepository.save(compilationOpt.get());
+        });
+        compilation.getEvents().add(event);
+        compilationRepository.save(compilation);
         log.info("Event {} has been added to compilation {}", eventId, compId);
     }
 
@@ -127,16 +125,16 @@ public class CompilationServiceImpl implements CompilationService {
         }
     }
 
+
     @Override
     public CompilationDto find(long id) {
-        Optional<Compilation> compilationOpt = compilationRepository.findById(id);
-        if (compilationOpt.isEmpty()) {
-            log.warn("Compilation with id = {} does not exists", id);
-            throw new EntityNotFoundException("Compilation not found");
-        }
-        return compilationMapper.toCompilationDto(compilationOpt.get());
+        Compilation compilation = compilationRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Compilation with id = {} does not exists", id);
+                    throw new EntityNotFoundException("Compilation not found");
+                });
+        return compilationMapper.toCompilationDto(compilation);
     }
-
     @Override
     public List<CompilationDto> findAll(boolean pinned, int from, int size) {
         log.warn("Beginning of findAll method");

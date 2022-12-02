@@ -2,7 +2,6 @@ package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,12 +39,12 @@ public class PublicController {
     }
 
     @GetMapping("/categories/{catId}")
-    public CategoryDto getCategory(@PathVariable @Min(1) @NotNull Long catId) {
+    public CategoryDto getCategory(@PathVariable @NotNull Long catId) {
         return categoryService.findById(catId);
     }
 
     @GetMapping("/events/{id}")
-    public EventFullDto getEvent(@PathVariable @Min(1) @NotNull Long id, HttpServletRequest request) {
+    public EventFullDto getEvent(@PathVariable @NotNull Long id, HttpServletRequest request) {
 
         return eventService.find(id, request.getRemoteAddr(), request.getRequestURI());
     }
@@ -53,13 +52,10 @@ public class PublicController {
     @GetMapping("/events")
     public List<EventShortDto> getEvents(@RequestParam Optional<String> text,
                                          @RequestParam(required = false) List<Long> categories,
-
                                          @RequestParam Optional<Boolean> paid,
                                          @RequestParam(defaultValue = "false") @NotNull Boolean onlyAvailable,
-                                         @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-                                         Optional<LocalDateTime> rangeStart,
-                                         @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-                                         Optional<LocalDateTime> rangeEnd,
+                                         @RequestParam Optional<LocalDateTime> rangeStart,
+                                         @RequestParam Optional<LocalDateTime> rangeEnd,
                                          @RequestParam(defaultValue = "EVENT_DATE") EventSortState sort,
                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
                                          @RequestParam(defaultValue = "10") @Min(1) @NotNull int size,
@@ -81,7 +77,7 @@ public class PublicController {
     }
 
     @GetMapping("/compilations/{compId}")
-    public CompilationDto getCompilation(@PathVariable @NotNull @Min(1) Long compId) {
+    public CompilationDto getCompilation(@PathVariable @NotNull Long compId) {
         return compilationService.find(compId);
     }
 
