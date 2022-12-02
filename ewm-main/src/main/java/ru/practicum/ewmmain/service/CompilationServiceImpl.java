@@ -50,7 +50,6 @@ public class CompilationServiceImpl implements CompilationService {
         log.info("Compilation {} has been deleted", id);
     }
 
-
     @Override
     public void deleteEvent(long compId, long eventId) {
         Compilation compilation = compilationRepository.findById(compId)
@@ -72,8 +71,6 @@ public class CompilationServiceImpl implements CompilationService {
         compilationRepository.save(compilation);
         log.info("Event {} has been removed from compilation {}", eventId, compId);
     }
-
-
 
     @Override
     public void addEvent(long compId, long eventId) {
@@ -125,7 +122,6 @@ public class CompilationServiceImpl implements CompilationService {
         }
     }
 
-
     @Override
     public CompilationDto find(long id) {
         Compilation compilation = compilationRepository.findById(id)
@@ -135,6 +131,7 @@ public class CompilationServiceImpl implements CompilationService {
                 });
         return compilationMapper.toCompilationDto(compilation);
     }
+
     @Override
     public List<CompilationDto> findAll(boolean pinned, int from, int size) {
         log.warn("Beginning of findAll method");
