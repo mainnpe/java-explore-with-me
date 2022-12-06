@@ -4,12 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 import ru.practicum.ewmmain.dto.category.CategoryMapper;
+import ru.practicum.ewmmain.dto.location.LocationMapper;
 import ru.practicum.ewmmain.dto.stats.ViewStatsDto;
 import ru.practicum.ewmmain.dto.user.UserMapper;
 import ru.practicum.ewmmain.model.Category;
+import ru.practicum.ewmmain.model.Location;
 import ru.practicum.ewmmain.model.User;
 import ru.practicum.ewmmain.model.event.Event;
-import ru.practicum.ewmmain.model.event.EventLocation;
 import ru.practicum.ewmmain.model.event.EventStatus;
 import ru.practicum.ewmmain.storage.CategoryRepository;
 import ru.practicum.ewmmain.storage.UserRepository;
@@ -27,9 +28,10 @@ public class EventMapper {
     private final UserMapper userMapper;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final LocationMapper locationMapper;
 
 
-    public Event toEvent(NewEventDto dto) {
+    public Event toEvent(NewEventDto dto, Location location) {
         Optional<Category> category = categoryRepository.findById(dto.getCategory());
         Optional<User> user = userRepository.findById(dto.getUserId());
 
@@ -38,7 +40,7 @@ public class EventMapper {
                 .category(category.orElse(null))
                 .description(dto.getDescription())
                 .eventDate(dto.getEventDate())
-                .location(toEventLocation(dto.getLocation()))
+                .location(location)
                 .title(dto.getTitle())
                 .user(user.orElse(null))
                 .state(EventStatus.PENDING)
@@ -63,8 +65,6 @@ public class EventMapper {
 
 
     public EventShortDto toEventShortDto(Event event) {
-
-
         Long views = 0L;
         return new EventShortDto(
                 event.getId(),
@@ -72,6 +72,7 @@ public class EventMapper {
                 categoryMapper.toCategoryDto(event.getCategory()),
                 event.getConfirmedRequests(),
                 event.getEventDate(),
+                locationMapper.toLocationDto(event.getLocation()),
                 userMapper.toUserShortDto(event.getUser()),
                 event.getPaid(),
                 event.getTitle(),
@@ -99,8 +100,6 @@ public class EventMapper {
     }
 
     public EventFullDto toEventFullDto(Event event) {
-
-
         Long views = 0L;
         return new EventFullDto(
                 event.getId(),
@@ -111,7 +110,7 @@ public class EventMapper {
                 event.getDescription(),
                 event.getEventDate(),
                 userMapper.toUserShortDto(event.getUser()),
-                toEventLocationDto(event.getLocation()),
+                locationMapper.toLocationDto(event.getLocation()),
                 event.getPaid(),
                 event.getParticipantLimit(),
                 event.getPublishedOn(),
@@ -121,6 +120,7 @@ public class EventMapper {
                 views
         );
     }
+
 
     public EventFullDto toEventFullDto(Event event, List<ViewStatsDto> views) {
         EventFullDto dto = toEventFullDto(event);
@@ -149,14 +149,6 @@ public class EventMapper {
                 .collect(Collectors.toList());
     }
 
-    public EventLocation toEventLocation(EventLocationDto dto) {
-        return new EventLocation(dto.getLat(), dto.getLon());
-    }
-
-    public EventLocationDto toEventLocationDto(EventLocation location) {
-        return new EventLocationDto(location.getLatitude(), location.getLongitude());
-    }
-
     public <T> Event updateEvent(T updateDto, Event event, Category category) {
         Field[] fields = updateDto.getClass().getDeclaredFields();
         Arrays.stream(fields).forEach(field -> {
@@ -176,6 +168,16 @@ public class EventMapper {
             }
         });
         return event;
+    }
+
+    public <T> Event updateEvent(T updateDto, Event event, Category category, Location location) {
+        Event updatedEvent = updateEvent(updateDto, event, category);
+        Field fieldToUpdate = ReflectionUtils.findField(Event.class, "location");
+        if (fieldToUpdate != null) {
+            fieldToUpdate.setAccessible(true);
+            ReflectionUtils.setField(fieldToUpdate, updatedEvent, location);
+        }
+        return updatedEvent;
     }
 
 }

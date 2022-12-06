@@ -1,21 +1,23 @@
 package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmmain.dto.category.CategoryDto;
 import ru.practicum.ewmmain.dto.category.NewCategoryDto;
+import ru.practicum.ewmmain.dto.city.CityDto;
+import ru.practicum.ewmmain.dto.city.NewCityDto;
 import ru.practicum.ewmmain.dto.compilation.CompilationDto;
 import ru.practicum.ewmmain.dto.compilation.NewCompilationDto;
 import ru.practicum.ewmmain.dto.event.AdminUpdateEventDto;
 import ru.practicum.ewmmain.dto.event.EventFullDto;
+import ru.practicum.ewmmain.dto.location.LocationDto;
+import ru.practicum.ewmmain.dto.location.NewLocationDto;
 import ru.practicum.ewmmain.dto.user.NewUserRequest;
 import ru.practicum.ewmmain.dto.user.UserDto;
 import ru.practicum.ewmmain.model.event.EventStatus;
-import ru.practicum.ewmmain.service.CategoryService;
-import ru.practicum.ewmmain.service.CompilationService;
-import ru.practicum.ewmmain.service.EventService;
-import ru.practicum.ewmmain.service.UserService;
+import ru.practicum.ewmmain.service.*;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
@@ -33,6 +35,8 @@ public class AdminController {
     private final CategoryService categoryService;
     private final EventService eventService;
     private final CompilationService compilationService;
+    private final CityService cityService;
+    private final LocationService locationService;
 
     @GetMapping("/users")
     public List<UserDto> getUsers(@RequestParam(required = false) List<Long> ids,
@@ -126,4 +130,39 @@ public class AdminController {
         compilationService.pin(compId);
     }
 
+    @PostMapping("/cities")
+    public CityDto addCity(@RequestBody NewCityDto dto) {
+        return cityService.create(dto);
+    }
+
+    @DeleteMapping("/cities/{cityId}")
+    public void deleteCity(@PathVariable @NotNull Long cityId) {
+        cityService.delete(cityId);
+    }
+
+    @GetMapping("/cities")
+    public List<CityDto> getCities(@RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
+                                   @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
+        return cityService.findAll(from, size);
+    }
+
+    @PostMapping("/locations")
+    public LocationDto addLocation(@RequestBody NewLocationDto dto) {
+        return locationService.create(dto);
+    }
+
+    @DeleteMapping("/locations/{locId}")
+    public void deleteLocation(@PathVariable @NotNull Long locId) {
+        locationService.delete(locId);
+    }
+
+    @GetMapping("/locations")
+    public List<LocationDto> getLocations(@RequestParam(required = false) List<Long> cities,
+                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
+                                          @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
+        if (CollectionUtils.isEmpty(cities)) {
+            return locationService.findAll(from, size);
+        }
+        return locationService.findAll(cities, from, size);
+    }
 }

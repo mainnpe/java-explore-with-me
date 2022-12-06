@@ -13,7 +13,8 @@ public class AdminUpdateEventDto {
     private Long category;
     private String description;
     private LocalDateTime eventDate;
-    private EventLocationDto location;
+    private Long location;
+
     private Boolean paid;
     private Integer participantLimit;
     private Boolean requestModeration;

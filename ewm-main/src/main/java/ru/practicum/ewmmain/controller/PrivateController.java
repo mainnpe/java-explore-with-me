@@ -1,14 +1,18 @@
 package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmmain.dto.event.EventFullDto;
 import ru.practicum.ewmmain.dto.event.EventShortDto;
 import ru.practicum.ewmmain.dto.event.NewEventDto;
 import ru.practicum.ewmmain.dto.event.UpdateEventDto;
+import ru.practicum.ewmmain.dto.location.LocationDto;
+import ru.practicum.ewmmain.dto.location.NewLocationDto;
 import ru.practicum.ewmmain.dto.request.ParticipationRequestDto;
 import ru.practicum.ewmmain.service.EventService;
+import ru.practicum.ewmmain.service.LocationService;
 import ru.practicum.ewmmain.service.RequestService;
 
 import javax.validation.Valid;
@@ -23,6 +27,7 @@ import java.util.List;
 public class PrivateController {
     private final EventService eventService;
     private final RequestService requestService;
+    private final LocationService locationService;
 
     @PostMapping("/{userId}/events")
     public EventFullDto addEvent(@RequestBody @Valid NewEventDto newEventDto,
@@ -95,5 +100,27 @@ public class PrivateController {
         return requestService.reject(userId, eventId, reqId);
     }
 
+    @PostMapping("/{userId}/locations")
+    public LocationDto addLocation(@RequestBody @Valid NewLocationDto dto,
+                                   @PathVariable @NotNull Long userId) {
+        return locationService.create(dto, userId);
+    }
+
+    @GetMapping("/{userId}/locations")
+    public List<LocationDto> getLocations(@PathVariable @NotNull Long userId,
+                                          @RequestParam(required = false) List<Long> cities,
+                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
+                                          @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
+        if (CollectionUtils.isEmpty(cities)) {
+            return locationService.findAll(userId, from, size);
+        }
+        return locationService.findAll(userId, cities, from, size);
+    }
+
+    @GetMapping("/{userId}/locations/{locId}")
+    public LocationDto getLocation(@PathVariable @NotNull Long userId,
+                                   @PathVariable @NotNull Long locId) {
+        return locationService.find(userId, locId);
+    }
 
 }

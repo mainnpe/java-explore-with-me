@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import ru.practicum.ewmmain.dto.category.CategoryDto;
+import ru.practicum.ewmmain.dto.location.LocationDto;
 import ru.practicum.ewmmain.dto.user.UserShortDto;
 import ru.practicum.ewmmain.model.event.EventStatus;
 
@@ -21,7 +22,8 @@ public class EventFullDto {
     private String description;
     private LocalDateTime eventDate;
     private UserShortDto initiator;
-    private EventLocationDto location;
+
+    private LocationDto location;
     private Boolean paid;
     private Integer participantLimit;
     private LocalDateTime publishedOn;

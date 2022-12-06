@@ -31,7 +31,6 @@ public class UpdateEventDto {
     @NotNull(message = "Event date cannot be null")
     @Future(message = "Event date must be in the future")
     @IsAfterConstraint(offsetInHours = 2)
-
     private LocalDateTime eventDate;
 
     private Boolean paid;

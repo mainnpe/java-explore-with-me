@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import ru.practicum.ewmmain.dto.category.CategoryDto;
+import ru.practicum.ewmmain.dto.location.LocationDto;
 import ru.practicum.ewmmain.dto.user.UserShortDto;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class EventShortDto {
     private CategoryDto category;
     private Integer confirmedRequests;
     private LocalDateTime eventDate;
+    private LocationDto location;
     private UserShortDto initiator;
     private Boolean paid;
     private String title;

@@ -2,19 +2,20 @@ package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.ewmmain.dto.category.CategoryDto;
+import ru.practicum.ewmmain.dto.city.CityDto;
 import ru.practicum.ewmmain.dto.compilation.CompilationDto;
 import ru.practicum.ewmmain.dto.event.EventFullDto;
 import ru.practicum.ewmmain.dto.event.EventShortDto;
 import ru.practicum.ewmmain.dto.event.EventSortState;
-import ru.practicum.ewmmain.service.CategoryService;
-import ru.practicum.ewmmain.service.CompilationService;
-import ru.practicum.ewmmain.service.EventService;
+import ru.practicum.ewmmain.dto.location.LocationDto;
+import ru.practicum.ewmmain.service.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.Min;
@@ -31,6 +32,8 @@ public class PublicController {
     private final CategoryService categoryService;
     private final EventService eventService;
     private final CompilationService compilationService;
+    private final CityService cityService;
+    private final LocationService locationService;
 
     @GetMapping("/categories")
     public List<CategoryDto> getCategories(@RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
@@ -57,12 +60,16 @@ public class PublicController {
                                          @RequestParam Optional<LocalDateTime> rangeStart,
                                          @RequestParam Optional<LocalDateTime> rangeEnd,
                                          @RequestParam(defaultValue = "EVENT_DATE") EventSortState sort,
+                                         @RequestParam(required = false) List<Long> cities,
+                                         @RequestParam(required = false) List<Long> locations,
+                                         @RequestParam(required = false) Double x,
+                                         @RequestParam(required = false) Double y,
+                                         @RequestParam(required = false) Double r,
                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
                                          @RequestParam(defaultValue = "10") @Min(1) @NotNull int size,
                                          HttpServletRequest request) {
-        log.warn("!!!!!!! uri = {}, ip = {}", request.getRequestURI(), request.getRemoteAddr());
         return eventService.findAll(text, categories, paid, onlyAvailable, rangeStart, rangeEnd,
-                sort, from, size, request.getRemoteAddr(), request.getRequestURI());
+                sort, cities, locations, x, y, r, from, size, request.getRemoteAddr(), request.getRequestURI());
     }
 
 
@@ -81,5 +88,25 @@ public class PublicController {
         return compilationService.find(compId);
     }
 
+    @GetMapping("/cities")
+    public List<CityDto> getCities(@RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
+                                   @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
+        return cityService.findAll(from, size);
+    }
+
+    @GetMapping("/locations")
+    public List<LocationDto> getLocations(@RequestParam(required = false) List<Long> cities,
+                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
+                                          @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
+        if (CollectionUtils.isEmpty(cities)) {
+            return locationService.findAll(from, size);
+        }
+        return locationService.findAll(cities, from, size);
+    }
+
+    @GetMapping("/locations/{locId}")
+    public LocationDto getLocation(@PathVariable @NotNull Long locId) {
+        return locationService.find(locId);
+    }
 
 }
