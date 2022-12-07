@@ -1,7 +1,6 @@
 package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmmain.dto.category.CategoryDto;
@@ -140,12 +139,6 @@ public class AdminController {
         cityService.delete(cityId);
     }
 
-    @GetMapping("/cities")
-    public List<CityDto> getCities(@RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
-                                   @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
-        return cityService.findAll(from, size);
-    }
-
     @PostMapping("/locations")
     public LocationDto addLocation(@RequestBody NewLocationDto dto) {
         return locationService.create(dto);
@@ -156,13 +149,4 @@ public class AdminController {
         locationService.delete(locId);
     }
 
-    @GetMapping("/locations")
-    public List<LocationDto> getLocations(@RequestParam(required = false) List<Long> cities,
-                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
-                                          @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
-        if (CollectionUtils.isEmpty(cities)) {
-            return locationService.findAll(from, size);
-        }
-        return locationService.findAll(cities, from, size);
-    }
 }

@@ -93,22 +93,4 @@ public class LocationServiceImpl implements LocationService {
         }
         return create(dto);
     }
-
-    @Override
-    public List<LocationDto> findAll(long userId, int from, int size) {
-        if (!userRepository.existsById(userId)) {
-            log.warn("User with id = {} does not exist", userId);
-            throw new EntityNotFoundException("User does not exist");
-        }
-        return findAll(from, size);
-    }
-
-    @Override
-    public List<LocationDto> findAll(long userId, List<Long> cityIds, int from, int size) {
-        if (!userRepository.existsById(userId)) {
-            log.warn("User with id = {} does not exist", userId);
-            throw new EntityNotFoundException("User does not exist");
-        }
-        return findAll(cityIds, from, size);
-    }
 }

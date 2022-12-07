@@ -15,11 +15,7 @@ public interface LocationService {
 
     List<LocationDto> findAll(int from, int size);
 
-    List<LocationDto> findAll(long userId, int from, int size);
-
     List<LocationDto> findAll(List<Long> cityIds, int from, int size);
-
-    List<LocationDto> findAll(long userId, List<Long> cityIds, int from, int size);
 
     LocationDto find(long id);
 

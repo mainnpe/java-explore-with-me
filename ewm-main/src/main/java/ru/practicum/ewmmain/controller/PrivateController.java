@@ -1,7 +1,6 @@
 package ru.practicum.ewmmain.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmmain.dto.event.EventFullDto;
@@ -104,23 +103,6 @@ public class PrivateController {
     public LocationDto addLocation(@RequestBody @Valid NewLocationDto dto,
                                    @PathVariable @NotNull Long userId) {
         return locationService.create(dto, userId);
-    }
-
-    @GetMapping("/{userId}/locations")
-    public List<LocationDto> getLocations(@PathVariable @NotNull Long userId,
-                                          @RequestParam(required = false) List<Long> cities,
-                                          @RequestParam(defaultValue = "0") @Min(0) @NotNull int from,
-                                          @RequestParam(defaultValue = "10") @Min(1) @NotNull int size) {
-        if (CollectionUtils.isEmpty(cities)) {
-            return locationService.findAll(userId, from, size);
-        }
-        return locationService.findAll(userId, cities, from, size);
-    }
-
-    @GetMapping("/{userId}/locations/{locId}")
-    public LocationDto getLocation(@PathVariable @NotNull Long userId,
-                                   @PathVariable @NotNull Long locId) {
-        return locationService.find(userId, locId);
     }
 
 }
