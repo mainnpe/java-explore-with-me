@@ -36,4 +36,6 @@ public interface EventRepository extends JpaRepository<Event, Long>, QuerydslPre
     @Query("update Event e set e.confirmedRequests = e.confirmedRequests - 1 where e.id = :id")
     int decreaseConfirmedRequestsByOne(Long id);
 
+    boolean existsByLocation_Id(Long locationId);
+
 }

@@ -17,11 +17,13 @@ import ru.practicum.ewmmain.dto.stats.ViewStatsDto;
 import ru.practicum.ewmmain.exception.EntityNotFoundException;
 import ru.practicum.ewmmain.exception.ForbiddenOperationException;
 import ru.practicum.ewmmain.model.Category;
+import ru.practicum.ewmmain.model.Location;
 import ru.practicum.ewmmain.model.event.Event;
 import ru.practicum.ewmmain.model.event.EventStatus;
 import ru.practicum.ewmmain.model.event.QEvent;
 import ru.practicum.ewmmain.storage.CategoryRepository;
 import ru.practicum.ewmmain.storage.EventRepository;
+import ru.practicum.ewmmain.storage.LocationRepository;
 import ru.practicum.ewmmain.storage.UserRepository;
 import ru.practicum.ewmmain.utils.CustomPageRequest;
 
@@ -39,8 +41,8 @@ public class EventServiceImpl implements EventService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final EventMapper eventMapper;
+    private final LocationRepository locationRepository;
     private final StatsServiceClient statsServiceClient;
-
     public static final String APP_NAME = "ewm-main-service";
 
     @Override
@@ -54,7 +56,12 @@ public class EventServiceImpl implements EventService {
             log.warn("Category with id = {} does not exists", newEventDto.getCategory());
             throw new EntityNotFoundException("Category does not exists");
         }
-        Event event = eventRepository.save(eventMapper.toEvent(newEventDto));
+        Location location = locationRepository.findById(newEventDto.getLocation())
+                .orElseThrow(() -> {
+                    log.warn("Location with id = {} does not exist", newEventDto.getLocation());
+                    throw new EntityNotFoundException("Location does not exists");
+                });
+        Event event = eventRepository.save(eventMapper.toEvent(newEventDto, location));
         log.info("Event with id = {} has been created", event.getId());
 
         return eventMapper.toEventFullDto(event);
@@ -185,13 +192,20 @@ public class EventServiceImpl implements EventService {
                     log.warn("Category with id = {} does not exists", updateEventDto.getCategory());
                     throw new EntityNotFoundException("Category does not exists");
                 });
+
         Event event = eventRepository.findById(eventId).orElseThrow(() -> {
             log.warn("Event with id = {} does not exists", eventId);
             throw new EntityNotFoundException("Event does not exists");
         });
 
+        Location location = locationRepository.findById(updateEventDto.getLocation())
+                .orElseThrow(() -> {
+                    log.warn("Location with id = {} does not exist", updateEventDto.getLocation());
+                    throw new EntityNotFoundException("Location does not exist");
+                });
+
         Event updatedEvent = eventRepository.save(eventMapper.updateEvent(
-                updateEventDto, event, category));
+                updateEventDto, event, category, location));
         log.info("Event with id = {} has been updated", eventId);
 
         return eventMapper.toEventFullDto(updatedEvent);
@@ -231,15 +245,17 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventShortDto> findAll(Optional<String> text, List<Long> categories, Optional<Boolean> paid, boolean onlyAvailable,
+    public List<EventShortDto> findAll(Optional<String> text, List<Long> categories,
+                                       Optional<Boolean> paid, boolean onlyAvailable,
                                        Optional<LocalDateTime> rangeStart, Optional<LocalDateTime> rangeEnd,
-                                       EventSortState sort, int from, int size, String ip, String uri) {
+                                       EventSortState sort, List<Long> cities, List<Long> locations,
+                                       Double lat, Double lon, Double r, int from, int size, String ip, String uri) {
 
         Pageable page = (EventSortState.EVENT_DATE.equals(sort)) ?
                 CustomPageRequest.of(from, size, Sort.by(Sort.Direction.DESC, "eventDate")) :
                 CustomPageRequest.of(from, size);
         BooleanExpression resultPredicate = preparePredicateForFindAllPublic(text, categories,
-                paid, onlyAvailable, rangeStart, rangeEnd);
+                paid, onlyAvailable, rangeStart, rangeEnd, cities, locations, lat, lon, r);
 
         List<Event> events = eventRepository.findAll(resultPredicate, page).getContent();
         log.info("For conditions search text = {}, categories = {}, paid = {}, onlyAvailable = {}, " +
@@ -270,7 +286,8 @@ public class EventServiceImpl implements EventService {
     public BooleanExpression preparePredicateForFindAllPublic(Optional<String> text, List<Long> categories,
                                                               Optional<Boolean> paid, boolean onlyAvailable,
                                                               Optional<LocalDateTime> rangeStart,
-                                                              Optional<LocalDateTime> rangeEnd) {
+                                                              Optional<LocalDateTime> rangeEnd, List<Long> cities,
+                                                              List<Long> locations, Double lat, Double lon, Double r) {
         QEvent event = QEvent.event;
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startDate = rangeStart.orElse(now);
@@ -281,27 +298,46 @@ public class EventServiceImpl implements EventService {
 
         if (!CollectionUtils.isEmpty(categories)) {
             BooleanExpression inCategories = event.category.id.in(categories);
-            resultPredicate.and(inCategories);
+            resultPredicate = resultPredicate.and(inCategories);
         }
 
-
         if (endDate == null) {
-            resultPredicate.and(event.eventDate.after(now));
+            resultPredicate = resultPredicate.and(event.eventDate.after(now));
         } else {
-            resultPredicate.and(event.eventDate
+            resultPredicate = resultPredicate.and(event.eventDate
                     .between(startDate, endDate));
         }
 
         if (onlyAvailable) {
-            BooleanExpression byAvailability = event.confirmedRequests.lt(event.participantLimit);
-            resultPredicate.and(byAvailability);
+            BooleanExpression byAvailability = event.confirmedRequests.lt(event.participantLimit)
+                    .or(event.participantLimit.eq(0));
+            resultPredicate = resultPredicate.and(byAvailability);
         }
 
-        paid.ifPresent(aBoolean -> resultPredicate.and(event.paid.eq(aBoolean)));
+        if (paid.isPresent()) {
+            resultPredicate = resultPredicate.and(event.paid.eq(paid.get()));
+        }
 
+        if (text.isPresent()) {
+            String textToFind = "%" + text.get() + "%";
+            resultPredicate = resultPredicate.and(event.annotation.likeIgnoreCase(textToFind)
+                    .or(event.description.likeIgnoreCase(textToFind)));
+        }
 
-        text.ifPresent(s -> resultPredicate.and(event.annotation.likeIgnoreCase(s)
-                .or(event.description.likeIgnoreCase(s))));
+        if (!CollectionUtils.isEmpty(cities)) {
+            BooleanExpression inCities = event.location.city.id.in(cities);
+            resultPredicate = resultPredicate.and(inCities);
+        }
+
+        if (!CollectionUtils.isEmpty(locations)) {
+            BooleanExpression inLocations = event.location.id.in(locations);
+            resultPredicate = resultPredicate.and(inLocations);
+        }
+
+        if (lat != null && lon != null && r != null) {
+            List<Location> locationsNearBy = locationRepository.findNearby(lat, lon, r);
+            resultPredicate = resultPredicate.and(event.location.in(locationsNearBy));
+        }
 
         return resultPredicate;
     }

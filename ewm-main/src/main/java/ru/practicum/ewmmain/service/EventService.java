@@ -31,7 +31,8 @@ public interface EventService {
 
     List<EventShortDto> findAll(Optional<String> text, List<Long> categories, Optional<Boolean> paid, boolean onlyAvailable,
                                 Optional<LocalDateTime> rangeStart, Optional<LocalDateTime> rangeEnd,
-                                EventSortState sort, int from, int size, String ip, String uri);
+                                EventSortState sort, List<Long> cities, List<Long> locations, Double lat, Double lon,
+                                Double r, int from, int size, String ip, String uri);
 
     List<EventFullDto> findAll(List<Long> users, List<EventStatus> states, List<Long> categories,
                                Optional<LocalDateTime> rangeStart, Optional<LocalDateTime> rangeEnd,

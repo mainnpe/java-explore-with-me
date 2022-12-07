@@ -29,7 +29,8 @@ public class NewEventDto {
     @IsAfterConstraint(offsetInHours = 2)
     private LocalDateTime eventDate;
 
-    private EventLocationDto location;
+
+    private Long location;
 
     private Boolean paid;
 

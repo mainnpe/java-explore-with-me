@@ -4,6 +4,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import ru.practicum.ewmmain.model.Category;
 import ru.practicum.ewmmain.model.Compilation;
+import ru.practicum.ewmmain.model.Location;
 import ru.practicum.ewmmain.model.User;
 
 import javax.persistence.*;
@@ -57,8 +58,10 @@ public class Event {
     @Column(name = "confirmed_requests")
     private Integer confirmedRequests;
 
-    @Embedded
-    private EventLocation location;
+
+    @ManyToOne
+    @JoinColumn(name = "location_id", nullable = false)
+    private Location location;
 
     @ManyToMany(mappedBy = "events")
     Set<Compilation> compilations;

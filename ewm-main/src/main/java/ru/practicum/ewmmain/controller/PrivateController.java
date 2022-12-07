@@ -7,8 +7,11 @@ import ru.practicum.ewmmain.dto.event.EventFullDto;
 import ru.practicum.ewmmain.dto.event.EventShortDto;
 import ru.practicum.ewmmain.dto.event.NewEventDto;
 import ru.practicum.ewmmain.dto.event.UpdateEventDto;
+import ru.practicum.ewmmain.dto.location.LocationDto;
+import ru.practicum.ewmmain.dto.location.NewLocationDto;
 import ru.practicum.ewmmain.dto.request.ParticipationRequestDto;
 import ru.practicum.ewmmain.service.EventService;
+import ru.practicum.ewmmain.service.LocationService;
 import ru.practicum.ewmmain.service.RequestService;
 
 import javax.validation.Valid;
@@ -23,6 +26,7 @@ import java.util.List;
 public class PrivateController {
     private final EventService eventService;
     private final RequestService requestService;
+    private final LocationService locationService;
 
     @PostMapping("/{userId}/events")
     public EventFullDto addEvent(@RequestBody @Valid NewEventDto newEventDto,
@@ -95,5 +99,10 @@ public class PrivateController {
         return requestService.reject(userId, eventId, reqId);
     }
 
+    @PostMapping("/{userId}/locations")
+    public LocationDto addLocation(@RequestBody @Valid NewLocationDto dto,
+                                   @PathVariable @NotNull Long userId) {
+        return locationService.create(dto, userId);
+    }
 
 }
